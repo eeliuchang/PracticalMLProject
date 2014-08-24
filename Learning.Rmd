@@ -1,0 +1,57 @@
+Practical Machine Learning Project
+
+The goal of the project is to predict the manner in which they did the exercise from the given data set. This is the "classe" variable in the training set. 
+
+In this project, I will first find the columns which does not contain many NAs and then caclulate the correlation coefficients of the remaining variables. Then I will abstract the important variables from random forest machine learning algorithm and train models.
+
+```{r}
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+
+head(training)
+names(training)
+library(caret)
+set.seed(333);
+
+nrow(training)
+nrow(testing)
+```
+create cross validation data set and delete unrelated columns
+
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.75,list=FALSE)
+tr <- training[inTrain,-1:-7]
+cv <- training[-inTrain,-1:-7]
+```
+find the NAs in each column
+```{r}
+NA_num <- colSums(is.na(tr))
+tr_colInd <- ((NA_num/dim(tr)[1]) < 0.05)
+tr <- tr[,tr_colInd]
+dim(tr)
+```
+Now the variables has been constrained to 86 variables
+```{r}
+corInd <- findCorrelation(cor(tr[sapply(tr, is.numeric)]), cutoff=0.4)
+tr <- tr[, -corInd]
+dim(tr)
+```
+after deleting all the highly correlated ones, there are 64 variable left
+By using a smaller set of the obersavations, I will find the important varialbes
+```{r}
+var <- train(classe ~ ., data = tr, method = "rf",tuneLength=15)
+var_imp <- varImp(var)
+
+
+modelFit <- train(classe~., 
+                  data=tr,
+                  method="rf",
+                  preProcess=c("center","scale"))
+```
+Now we can calculate the in-sample error using the confusionMatrix
+```{r}
+confusionMatrix(training$classe, predict(modelFit, newdata=training))
+```
+
+Conclusion, the random forest machine learning method works well in prediciton and gives us a machine learning model for their activities
+
